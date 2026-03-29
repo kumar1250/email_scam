@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% block title %}Manage Users — ShieldMail{% endblock %}
+{% block page_title %}Manage Users{% endblock %}
+
+{% block content %}
+<div class="page-actions-bar">
+  <form method="GET" class="search-form">
+    <div class="search-input-wrap">
+      <i class="fas fa-search"></i>
+      <input type="text" name="q" value="{{ query }}" placeholder="Search by username or email…" class="search-input"/>
+    </div>
+    <button type="submit" class="btn-primary btn-sm">Search</button>
+    {% if query %}<a href="{% url 'admin_panel:users_list' %}" class="btn-ghost btn-sm">Clear</a>{% endif %}
+  </form>
+  <span class="results-count">{{ users.count }} users</span>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>#</th><th>User</th><th>Email</th><th>Joined</th><th>Scans</th><th>Status</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td class="td-id">{{ u.id }}</td>
+            <td>
+              <div class="user-cell">
+                <div class="user-avatar-sm">{{ u.username|first|upper }}</div>
+                <div>
+                  <div><strong>{{ u.username }}</strong></div>
+                  <div class="td-sub">{{ u.get_full_name }}</div>
+                </div>
+              </div>
+            </td>
+            <td class="td-mono">{{ u.email|default:"—" }}</td>
+            <td class="td-date">{{ u.date_joined|date:"M d, Y" }}</td>
+            <td><span class="badge-count">{{ u.scan_count }}</span></td>
+            <td>
+              <span class="status-dot {% if u.is_active %}status-active{% else %}status-inactive{% endif %}">
+                {% if u.is_active %}Active{% else %}Inactive{% endif %}
+              </span>
+            </td>
+            <td>
+              <div class="action-btns">
+                <form method="POST" action="{% url 'admin_panel:toggle_user' u.id %}" style="display:inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn-icon-sm {% if u.is_active %}btn-icon-warning{% else %}btn-icon-success{% endif %}"
+                    title="{% if u.is_active %}Deactivate{% else %}Activate{% endif %}">
+                    <i class="fas {% if u.is_active %}fa-ban{% else %}fa-circle-check{% endif %}"></i>
+                  </button>
+                </form>
+                <form method="POST" action="{% url 'admin_panel:delete_user' u.id %}" style="display:inline"
+                  onsubmit="return confirm('Delete user {{ u.username }}? This will delete all their scans too.')">
+                  {% csrf_token %}
+                  <button type="submit" class="btn-icon-sm btn-icon-danger" title="Delete"><i class="fas fa-trash"></i></button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="empty-row"><i class="fas fa-users-slash"></i> No users found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

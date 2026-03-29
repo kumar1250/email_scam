@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+{% block title %}Scam Keywords — ShieldMail{% endblock %}
+{% block page_title %}Scam Keywords{% endblock %}
+
+{% block content %}
+<div class="dashboard-grid">
+  <!-- Add keyword form -->
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-plus-circle"></i> Add / Update Keyword</h3></div>
+    <div class="card-body">
+      <form method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="action" value="add"/>
+        <div class="form-group">
+          <label>Keyword / Phrase</label>
+          <input type="text" name="keyword" class="form-control" placeholder="e.g. free money" required/>
+        </div>
+        <div class="form-row-2">
+          <div class="form-group">
+            <label>Weight (1.0–5.0)</label>
+            <input type="number" name="weight" class="form-control" value="2.0" min="0.5" max="5.0" step="0.5"/>
+          </div>
+          <div class="form-group">
+            <label>Category</label>
+            <select name="category" class="form-control">
+              <option value="general">General</option>
+              <option value="financial">Financial</option>
+              <option value="urgent">Urgency</option>
+              <option value="phishing">Phishing</option>
+              <option value="social">Social Engineering</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn-primary"><i class="fas fa-plus"></i> Add Keyword</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div>
+    <div class="card mb-4">
+      <div class="card-body">
+        <div class="info-rows">
+          <div class="info-row"><span>Total Keywords</span><strong>{{ keywords.count }}</strong></div>
+          <div class="info-row"><span>Active</span><strong class="text-success">{{ keywords|length }}</strong></div>
+        </div>
+        <p class="muted mt-2" style="font-size:0.85rem">
+          <i class="fas fa-circle-info"></i> Keywords are added on top of the built-in detection engine.
+          Higher weight = more impact on scam score.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header"><h3><i class="fas fa-tags"></i> Keyword Dataset ({{ keywords.count }})</h3></div>
+  <div class="card-body p-0">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>#</th><th>Keyword</th><th>Category</th><th>Weight</th><th>Status</th><th>Added</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for kw in keywords %}
+          <tr>
+            <td class="td-id">{{ kw.id }}</td>
+            <td><strong>{{ kw.keyword }}</strong></td>
+            <td><span class="category-tag">{{ kw.category }}</span></td>
+            <td>
+              <div class="weight-bar-wrap">
+                <div class="weight-bar" style="width: {{ kw.weight|floatformat:0 }}0%"></div>
+                <span>{{ kw.weight }}</span>
+              </div>
+            </td>
+            <td>
+              <span class="status-dot {% if kw.is_active %}status-active{% else %}status-inactive{% endif %}">
+                {% if kw.is_active %}Active{% else %}Disabled{% endif %}
+              </span>
+            </td>
+            <td class="td-date">{{ kw.created_at|date:"M d, Y" }}</td>
+            <td>
+              <div class="action-btns">
+                <form method="POST" style="display:inline">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="toggle"/>
+                  <input type="hidden" name="keyword_id" value="{{ kw.id }}"/>
+                  <button type="submit" class="btn-icon-sm btn-icon-warning" title="Toggle">
+                    <i class="fas {% if kw.is_active %}fa-eye-slash{% else %}fa-eye{% endif %}"></i>
+                  </button>
+                </form>
+                <form method="POST" style="display:inline" onsubmit="return confirm('Delete keyword?')">
+                  {% csrf_token %}
+                  <input type="hidden" name="action" value="delete"/>
+                  <input type="hidden" name="keyword_id" value="{{ kw.id }}"/>
+                  <button type="submit" class="btn-icon-sm btn-icon-danger" title="Delete"><i class="fas fa-trash"></i></button>
+                </form>
+              </div>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="empty-row">No custom keywords yet. Add one above.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

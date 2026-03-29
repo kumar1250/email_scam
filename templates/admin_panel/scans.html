@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+{% block title %}All Scans — ShieldMail{% endblock %}
+{% block page_title %}All Scans{% endblock %}
+
+{% block content %}
+<div class="page-actions-bar">
+  <div class="filter-tabs">
+    <a href="?result=" class="filter-tab {% if not result_filter %}active{% endif %}">All</a>
+    <a href="?result=SCAM" class="filter-tab filter-scam {% if result_filter == 'SCAM' %}active{% endif %}">Scam</a>
+    <a href="?result=SAFE" class="filter-tab filter-safe {% if result_filter == 'SAFE' %}active{% endif %}">Safe</a>
+    <a href="?result=SUSPICIOUS" class="filter-tab filter-suspicious {% if result_filter == 'SUSPICIOUS' %}active{% endif %}">Suspicious</a>
+  </div>
+  <a href="{% url 'admin_panel:export_csv' %}" class="btn-secondary btn-sm">
+    <i class="fas fa-file-csv"></i> Export CSV
+  </a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>ID</th><th>User</th><th>Subject</th><th>Sender</th><th>Result</th><th>Score</th><th>Date</th></tr>
+        </thead>
+        <tbody>
+          {% for scan in scans %}
+          <tr>
+            <td class="td-id">{{ scan.id }}</td>
+            <td><strong>{{ scan.user.username }}</strong></td>
+            <td>{{ scan.subject|default:"(No Subject)"|truncatechars:35 }}</td>
+            <td class="td-mono">{{ scan.sender|default:"Unknown"|truncatechars:28 }}</td>
+            <td>
+              <span class="badge badge-result badge-{{ scan.result|lower }}">
+                {% if scan.result == 'SCAM' %}<i class="fas fa-skull-crossbones"></i>
+                {% elif scan.result == 'SAFE' %}<i class="fas fa-circle-check"></i>
+                {% else %}<i class="fas fa-triangle-exclamation"></i>{% endif %}
+                {{ scan.result }}
+              </span>
+            </td>
+            <td>
+              <div class="mini-progress">
+                <div class="mini-bar mini-bar-{{ scan.result|lower }}" style="width:{{ scan.confidence_score }}%"></div>
+              </div>
+              <span class="pct-text">{{ scan.confidence_score }}%</span>
+            </td>
+            <td class="td-date">{{ scan.scanned_at|date:"M d, Y H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" class="empty-row"><i class="fas fa-inbox"></i> No scans found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

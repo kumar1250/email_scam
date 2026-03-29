@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+{% block title %}Login — ShieldMail{% endblock %}
+
+{% block auth_content %}
+<div class="auth-page">
+  <div class="auth-left">
+    <div class="auth-brand">
+      <div class="brand-icon-lg"><i class="fas fa-shield-halved"></i></div>
+      <h1>ShieldMail</h1>
+      <p>AI-Powered Email Scam Detection</p>
+    </div>
+    <div class="auth-features">
+      <div class="feature-item">
+        <div class="feature-icon"><i class="fas fa-magnifying-glass-chart"></i></div>
+        <div><strong>Smart Detection</strong><p>Identifies phishing, scams & fraud in seconds</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon"><i class="fas fa-link-slash"></i></div>
+        <div><strong>Link Analysis</strong><p>Detects malicious URLs and phishing domains</p></div>
+      </div>
+      <div class="feature-item">
+        <div class="feature-icon"><i class="fas fa-chart-line"></i></div>
+        <div><strong>Confidence Score</strong><p>Get a precise probability score for every email</p></div>
+      </div>
+    </div>
+    <div class="auth-stats">
+      <div class="stat-chip"><span>50K+</span> Scams Caught</div>
+      <div class="stat-chip"><span>99%</span> Accuracy</div>
+      <div class="stat-chip"><span>24/7</span> Protection</div>
+    </div>
+  </div>
+
+  <div class="auth-right">
+    <div class="auth-card">
+      <div class="auth-card-header">
+        <h2>Welcome Back</h2>
+        <p>Sign in to your account to continue</p>
+      </div>
+
+      {% if messages %}
+      {% for message in messages %}
+      <div class="alert alert-{{ message.tags }}">
+        <i class="fas fa-circle-info"></i> {{ message }}
+      </div>
+      {% endfor %}
+      {% endif %}
+
+      <form method="POST" class="auth-form">
+        {% csrf_token %}
+        <div class="form-group">
+          <label>Username</label>
+          <div class="input-with-icon">
+            <i class="fas fa-user"></i>
+            {{ form.username }}
+          </div>
+          {% if form.username.errors %}<span class="field-error">{{ form.username.errors.0 }}</span>{% endif %}
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <div class="input-with-icon">
+            <i class="fas fa-lock"></i>
+            {{ form.password }}
+            <button type="button" class="toggle-pw" onclick="togglePassword(this)">
+              <i class="fas fa-eye"></i>
+            </button>
+          </div>
+          {% if form.password.errors %}<span class="field-error">{{ form.password.errors.0 }}</span>{% endif %}
+        </div>
+        <button type="submit" class="btn-primary btn-full">
+          <i class="fas fa-right-to-bracket"></i> Sign In
+        </button>
+      </form>
+
+      <p class="auth-switch">Don't have an account? <a href="{% url 'accounts:signup' %}">Create one free</a></p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function togglePassword(btn) {
+  const input = btn.closest('.input-with-icon').querySelector('input');
+  const icon = btn.querySelector('i');
+  if (input.type === 'password') {
+    input.type = 'text';
+    icon.className = 'fas fa-eye-slash';
+  } else {
+    input.type = 'password';
+    icon.className = 'fas fa-eye';
+  }
+}
+</script>
+{% endblock %}

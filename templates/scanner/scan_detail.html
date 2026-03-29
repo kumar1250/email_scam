@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Scan Detail — ShieldMail{% endblock %}
+{% block page_title %}Scan Detail{% endblock %}
+
+{% block content %}
+<div class="detail-page">
+  <div class="detail-header card result-card-{{ scan.result|lower }}">
+    <div class="detail-verdict">
+      {% if scan.result == 'SCAM' %}<i class="fas fa-skull-crossbones fa-2x"></i>
+      {% elif scan.result == 'SAFE' %}<i class="fas fa-shield-check fa-2x"></i>
+      {% else %}<i class="fas fa-triangle-exclamation fa-2x"></i>{% endif %}
+      <div>
+        <h2>{{ scan.result }} EMAIL</h2>
+        <p>Scanned {{ scan.scanned_at|date:"M d, Y \a\t H:i" }}</p>
+      </div>
+    </div>
+    <div class="detail-score">
+      <div class="big-score">{{ scan.confidence_score }}%</div>
+      <div>Confidence</div>
+    </div>
+  </div>
+
+  <div class="detail-grid">
+    <div class="detail-main">
+      <div class="card">
+        <div class="card-header"><h3><i class="fas fa-envelope"></i> Email Details</h3></div>
+        <div class="card-body">
+          <div class="info-rows">
+            <div class="info-row"><span>Subject</span><strong>{{ scan.subject|default:"(No Subject)" }}</strong></div>
+            <div class="info-row"><span>From</span><strong>{{ scan.sender|default:"Unknown" }}</strong></div>
+            {% if scan.file_name %}<div class="info-row"><span>File</span><strong>{{ scan.file_name }}</strong></div>{% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header"><h3><i class="fas fa-file-lines"></i> Email Content</h3></div>
+        <div class="card-body">
+          <div class="email-content-preview">{{ scan.email_content|linebreaks }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-side">
+      <div class="card">
+        <div class="card-header"><h3><i class="fas fa-list-check"></i> Analysis Reasons</h3></div>
+        <div class="card-body">
+          {% for reason in scan.get_reasons %}
+          <div class="reason-item"><i class="fas fa-chevron-right"></i> {{ reason }}</div>
+          {% empty %}
+          <p class="muted">No specific reasons recorded.</p>
+          {% endfor %}
+        </div>
+      </div>
+
+      {% if scan.get_detected_keywords %}
+      <div class="card">
+        <div class="card-header"><h3><i class="fas fa-tags"></i> Scam Keywords</h3></div>
+        <div class="card-body">
+          <div class="keyword-tags">
+            {% for kw in scan.get_detected_keywords %}
+            <span class="kw-tag">{{ kw }}</span>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if scan.get_suspicious_links %}
+      <div class="card">
+        <div class="card-header"><h3><i class="fas fa-link-slash"></i> Suspicious Links</h3></div>
+        <div class="card-body">
+          {% for link in scan.get_suspicious_links %}
+          <div class="link-item"><i class="fas fa-triangle-exclamation"></i> <code>{{ link|truncatechars:55 }}</code></div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="card">
+        <div class="card-header"><h3><i class="fas fa-gear"></i> Actions</h3></div>
+        <div class="card-body">
+          <a href="{% url 'scanner:history' %}" class="btn-secondary btn-full mb-2"><i class="fas fa-arrow-left"></i> Back to History</a>
+          <form method="POST" action="{% url 'scanner:delete_scan' scan.id %}" onsubmit="return confirm('Delete this scan?')">
+            {% csrf_token %}
+            <button type="submit" class="btn-danger btn-full"><i class="fas fa-trash"></i> Delete This Scan</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

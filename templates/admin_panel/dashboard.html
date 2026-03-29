@@ -1,0 +1,136 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard — ShieldMail{% endblock %}
+{% block page_title %}Admin Overview{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+  <div class="stat-card stat-total">
+    <div class="stat-icon"><i class="fas fa-users"></i></div>
+    <div class="stat-info"><div class="stat-value">{{ total_users }}</div><div class="stat-label">Total Users</div></div>
+  </div>
+  <div class="stat-card stat-info">
+    <div class="stat-icon"><i class="fas fa-envelope-open-text"></i></div>
+    <div class="stat-info"><div class="stat-value">{{ total_scans }}</div><div class="stat-label">Total Scans</div></div>
+  </div>
+  <div class="stat-card stat-scam">
+    <div class="stat-icon"><i class="fas fa-skull-crossbones"></i></div>
+    <div class="stat-info"><div class="stat-value">{{ scam_count }}</div><div class="stat-label">Scams Found</div></div>
+  </div>
+  <div class="stat-card stat-safe">
+    <div class="stat-icon"><i class="fas fa-circle-check"></i></div>
+    <div class="stat-info"><div class="stat-value">{{ safe_count }}</div><div class="stat-label">Safe Emails</div></div>
+  </div>
+</div>
+
+<div class="dashboard-grid">
+  <div class="card">
+    <div class="card-header"><h3><i class="fas fa-chart-column"></i> Scan Activity</h3></div>
+    <div class="card-body"><canvas id="activityChart" height="260"></canvas></div>
+  </div>
+
+  <div class="side-column">
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-chart-pie"></i> Results Split</h3></div>
+      <div class="card-body chart-body">
+        {% if total_scans > 0 %}
+        <canvas id="adminDonut" height="200"></canvas>
+        {% else %}
+        <div class="empty-state-sm"><i class="fas fa-chart-pie"></i><p>No data yet</p></div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-trophy"></i> Top Users</h3>
+        <a href="{% url 'admin_panel:users_list' %}" class="btn-link-sm">All Users</a>
+      </div>
+      <div class="card-body p-0">
+        <div class="recent-list">
+          {% for u in top_users %}
+          <div class="recent-item">
+            <div class="user-avatar-sm">{{ u.username|first|upper }}</div>
+            <div class="recent-info">
+              <div class="recent-subject">{{ u.username }}</div>
+              <div class="recent-meta">{{ u.scan_count }} scans</div>
+            </div>
+            <div class="{% if u.is_active %}text-success{% else %}text-danger{% endif %} small-icon">
+              <i class="fas {% if u.is_active %}fa-circle-check{% else %}fa-circle-xmark{% endif %}"></i>
+            </div>
+          </div>
+          {% empty %}
+          <div class="empty-state-sm"><i class="fas fa-users"></i><p>No users yet</p></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mt-4">
+  <div class="card-header">
+    <h3><i class="fas fa-clock-rotate-left"></i> Recent Scans</h3>
+    <a href="{% url 'admin_panel:all_scans' %}" class="btn-link-sm">View all</a>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>ID</th><th>User</th><th>Subject</th><th>Result</th><th>Score</th><th>Date</th></tr></thead>
+        <tbody>
+          {% for scan in recent_scans %}
+          <tr>
+            <td class="td-id">{{ scan.id }}</td>
+            <td><strong>{{ scan.user.username }}</strong></td>
+            <td>{{ scan.subject|default:"(No Subject)"|truncatechars:35 }}</td>
+            <td><span class="badge badge-result badge-{{ scan.result|lower }}">{{ scan.result }}</span></td>
+            <td>{{ scan.confidence_score }}%</td>
+            <td>{{ scan.scanned_at|date:"M d, H:i" }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="6" class="empty-row">No scans yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const monthly = {{ monthly_data|safe }};
+const labels = Object.keys(monthly).slice(-6);
+const scamData = labels.map(k => monthly[k]?.scam || 0);
+const safeData = labels.map(k => monthly[k]?.safe || 0);
+const suspData = labels.map(k => monthly[k]?.suspicious || 0);
+
+const actCtx = document.getElementById('activityChart');
+if (actCtx) {
+  new Chart(actCtx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Scam', data: scamData, backgroundColor: '#ef4444', borderRadius: 4 },
+        { label: 'Safe', data: safeData, backgroundColor: '#22c55e', borderRadius: 4 },
+        { label: 'Suspicious', data: suspData, backgroundColor: '#f59e0b', borderRadius: 4 },
+      ]
+    },
+    options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { x: { stacked: false }, y: { beginAtZero: true } } }
+  });
+}
+
+const donutCtx = document.getElementById('adminDonut');
+if (donutCtx) {
+  new Chart(donutCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Scam', 'Safe', 'Suspicious'],
+      datasets: [{ data: [{{ scam_count }}, {{ safe_count }}, {{ suspicious_count }}],
+        backgroundColor: ['#ef4444','#22c55e','#f59e0b'], borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: { cutout: '72%', plugins: { legend: { position: 'bottom' } } }
+  });
+}
+</script>
+{% endblock %}

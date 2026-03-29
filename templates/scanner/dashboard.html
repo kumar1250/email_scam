@@ -1,0 +1,313 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — ShieldMail{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats Row -->
+<div class="stats-grid">
+  <div class="stat-card stat-total">
+    <div class="stat-icon"><i class="fas fa-envelope-open-text"></i></div>
+    <div class="stat-info">
+      <div class="stat-value">{{ total }}</div>
+      <div class="stat-label">Total Scanned</div>
+    </div>
+    <div class="stat-trend">All time</div>
+  </div>
+  <div class="stat-card stat-scam">
+    <div class="stat-icon"><i class="fas fa-skull-crossbones"></i></div>
+    <div class="stat-info">
+      <div class="stat-value">{{ scam_count }}</div>
+      <div class="stat-label">Scams Detected</div>
+    </div>
+    <div class="stat-trend text-danger">Danger</div>
+  </div>
+  <div class="stat-card stat-safe">
+    <div class="stat-icon"><i class="fas fa-circle-check"></i></div>
+    <div class="stat-info">
+      <div class="stat-value">{{ safe_count }}</div>
+      <div class="stat-label">Safe Emails</div>
+    </div>
+    <div class="stat-trend text-success">Clean</div>
+  </div>
+  <div class="stat-card stat-suspicious">
+    <div class="stat-icon"><i class="fas fa-triangle-exclamation"></i></div>
+    <div class="stat-info">
+      <div class="stat-value">{{ suspicious_count }}</div>
+      <div class="stat-label">Suspicious</div>
+    </div>
+    <div class="stat-trend text-warning">Review</div>
+  </div>
+</div>
+
+<div class="dashboard-grid">
+  <!-- Scanner Panel -->
+  <div class="card scanner-card">
+    <div class="card-header">
+      <h3><i class="fas fa-radar"></i> Scan Email</h3>
+      <div class="tab-switcher">
+        <button class="tab-btn active" onclick="switchTab('paste')">Paste Text</button>
+        <button class="tab-btn" onclick="switchTab('upload')">Upload File</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <form id="scanForm" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-row-2">
+          <div class="form-group">
+            <label><i class="fas fa-heading"></i> Subject (optional)</label>
+            <input type="text" name="subject" class="form-control" placeholder="Email subject…"/>
+          </div>
+          <div class="form-group">
+            <label><i class="fas fa-user"></i> Sender (optional)</label>
+            <input type="text" name="sender" class="form-control" placeholder="sender@example.com"/>
+          </div>
+        </div>
+
+        <!-- Paste tab -->
+        <div id="tab-paste" class="tab-content active">
+          <div class="form-group">
+            <label><i class="fas fa-align-left"></i> Email Content</label>
+            <textarea name="content" id="emailContent" class="form-control scan-textarea" rows="9"
+              placeholder="Paste the full email content here to analyze it for scams, phishing, and fraud…"></textarea>
+          </div>
+        </div>
+
+        <!-- Upload tab -->
+        <div id="tab-upload" class="tab-content">
+          <div class="upload-zone" id="uploadZone">
+            <i class="fas fa-cloud-arrow-up upload-icon"></i>
+            <p>Drag & drop your <strong>.txt</strong> or <strong>.eml</strong> file here</p>
+            <p class="upload-sub">or click to browse</p>
+            <input type="file" name="email_file" id="emailFile" accept=".txt,.eml" class="upload-input"/>
+          </div>
+          <div id="filePreview" class="file-preview hidden">
+            <i class="fas fa-file-lines"></i>
+            <span id="fileName"></span>
+            <button type="button" onclick="clearFile()" class="btn-ghost-sm"><i class="fas fa-xmark"></i></button>
+          </div>
+        </div>
+
+        <div class="scan-actions">
+          <button type="submit" class="btn-scan" id="scanBtn">
+            <i class="fas fa-magnifying-glass"></i> Check for Scam
+          </button>
+          <button type="button" class="btn-ghost" onclick="clearForm()">
+            <i class="fas fa-rotate-left"></i> Clear
+          </button>
+        </div>
+      </form>
+
+      <!-- Result Panel -->
+      <div id="resultPanel" class="result-panel hidden">
+        <div class="result-header" id="resultHeader">
+          <div class="result-verdict" id="resultVerdict"></div>
+          <div class="result-score-wrap">
+            <div class="score-circle" id="scoreCircle">
+              <svg viewBox="0 0 120 120">
+                <circle class="score-bg" cx="60" cy="60" r="50"/>
+                <circle class="score-fill" id="scoreFill" cx="60" cy="60" r="50"
+                  stroke-dasharray="314" stroke-dashoffset="314"/>
+              </svg>
+              <div class="score-text" id="scoreText">0%</div>
+            </div>
+            <div class="score-label" id="scoreLabel"></div>
+          </div>
+        </div>
+
+        <div class="result-details">
+          <div id="reasonsList" class="reasons-block"></div>
+          <div id="keywordsList" class="keywords-block"></div>
+          <div id="linksList" class="links-block"></div>
+        </div>
+
+        <div class="result-actions">
+          <button class="btn-ghost" onclick="closeResult()"><i class="fas fa-xmark"></i> Dismiss</button>
+          <a href="{% url 'scanner:history' %}" class="btn-secondary"><i class="fas fa-clock-rotate-left"></i> View History</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chart + Recent -->
+  <div class="side-column">
+    {% if total > 0 %}
+    <div class="card">
+      <div class="card-header"><h3><i class="fas fa-chart-donut"></i> Results Breakdown</h3></div>
+      <div class="card-body chart-body">
+        <canvas id="donutChart" height="200"></canvas>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card">
+      <div class="card-header">
+        <h3><i class="fas fa-clock-rotate-left"></i> Recent Scans</h3>
+        <a href="{% url 'scanner:history' %}" class="btn-link-sm">View all</a>
+      </div>
+      <div class="card-body p-0">
+        {% if recent_scans %}
+        <div class="recent-list">
+          {% for scan in recent_scans %}
+          <a href="{% url 'scanner:scan_detail' scan.id %}" class="recent-item">
+            <div class="recent-icon result-icon-{{ scan.result|lower }}">
+              {% if scan.result == 'SCAM' %}<i class="fas fa-skull-crossbones"></i>
+              {% elif scan.result == 'SAFE' %}<i class="fas fa-circle-check"></i>
+              {% else %}<i class="fas fa-triangle-exclamation"></i>{% endif %}
+            </div>
+            <div class="recent-info">
+              <div class="recent-subject">{{ scan.subject|default:"(No Subject)"|truncatechars:30 }}</div>
+              <div class="recent-meta">{{ scan.scanned_at|date:"M d, H:i" }}</div>
+            </div>
+            <div class="recent-badge badge-{{ scan.result|lower }}">{{ scan.result }}</div>
+          </a>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state-sm">
+          <i class="fas fa-inbox"></i>
+          <p>No scans yet. Try scanning an email!</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const SCAN_URL = "{% url 'scanner:scan_email' %}";
+const CSRF_TOKEN = "{{ csrf_token }}";
+const CHART_DATA = { scam: {{ scam_count }}, safe: {{ safe_count }}, suspicious: {{ suspicious_count }} };
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  event.target.classList.add('active');
+}
+
+// File upload zone
+const uploadZone = document.getElementById('uploadZone');
+const fileInput = document.getElementById('emailFile');
+if (uploadZone) {
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('drag-over');
+    if (e.dataTransfer.files[0]) { fileInput.files = e.dataTransfer.files; showFilePreview(e.dataTransfer.files[0].name); }
+  });
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) showFilePreview(fileInput.files[0].name);
+  });
+}
+
+function showFilePreview(name) {
+  document.getElementById('uploadZone').classList.add('hidden');
+  document.getElementById('filePreview').classList.remove('hidden');
+  document.getElementById('fileName').textContent = name;
+}
+
+function clearFile() {
+  fileInput.value = '';
+  document.getElementById('uploadZone').classList.remove('hidden');
+  document.getElementById('filePreview').classList.add('hidden');
+}
+
+function clearForm() {
+  document.getElementById('scanForm').reset();
+  clearFile();
+  closeResult();
+}
+
+function closeResult() {
+  document.getElementById('resultPanel').classList.add('hidden');
+}
+
+// Scan submission
+document.getElementById('scanForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('scanBtn');
+  btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing…';
+  btn.disabled = true;
+
+  const formData = new FormData(this);
+  try {
+    const res = await fetch(SCAN_URL, { method: 'POST', headers: { 'X-CSRFToken': CSRF_TOKEN }, body: formData });
+    const data = await res.json();
+    if (data.error) { alert(data.error); return; }
+    showResult(data);
+  } catch(err) {
+    alert('An error occurred. Please try again.');
+  } finally {
+    btn.innerHTML = '<i class="fas fa-magnifying-glass"></i> Check for Scam';
+    btn.disabled = false;
+  }
+});
+
+function showResult(data) {
+  const panel = document.getElementById('resultPanel');
+  const header = document.getElementById('resultHeader');
+  const verdict = document.getElementById('resultVerdict');
+  const scoreText = document.getElementById('scoreText');
+  const scoreFill = document.getElementById('scoreFill');
+  const scoreLabel = document.getElementById('scoreLabel');
+
+  panel.classList.remove('hidden');
+  header.className = 'result-header result-' + data.result.toLowerCase();
+
+  const icons = { SCAM: '☠️', SAFE: '✅', SUSPICIOUS: '⚠️' };
+  const labels = { SCAM: 'SCAM DETECTED', SAFE: 'EMAIL IS SAFE', SUSPICIOUS: 'SUSPICIOUS EMAIL' };
+  verdict.innerHTML = `<span class="verdict-icon">${icons[data.result]}</span> <span>${labels[data.result]}</span>`;
+
+  const pct = Math.round(data.confidence_score);
+  scoreText.textContent = pct + '%';
+  scoreLabel.textContent = data.result === 'SAFE' ? 'Safety Score' : 'Scam Probability';
+  const offset = 314 - (314 * pct / 100);
+  scoreFill.style.strokeDashoffset = offset;
+  scoreFill.className = 'score-fill score-fill-' + data.result.toLowerCase();
+
+  // Reasons
+  const reasonsEl = document.getElementById('reasonsList');
+  if (data.reasons && data.reasons.length) {
+    reasonsEl.innerHTML = `<h4><i class="fas fa-list-check"></i> Analysis</h4>` +
+      data.reasons.map(r => `<div class="reason-item"><i class="fas fa-chevron-right"></i> ${r}</div>`).join('');
+  } else { reasonsEl.innerHTML = ''; }
+
+  // Keywords
+  const kwEl = document.getElementById('keywordsList');
+  if (data.detected_keywords && data.detected_keywords.length) {
+    kwEl.innerHTML = `<h4><i class="fas fa-tags"></i> Scam Keywords Found</h4>` +
+      `<div class="keyword-tags">${data.detected_keywords.slice(0,10).map(k => `<span class="kw-tag">${k}</span>`).join('')}</div>`;
+  } else { kwEl.innerHTML = ''; }
+
+  // Links
+  const linksEl = document.getElementById('linksList');
+  if (data.suspicious_links && data.suspicious_links.length) {
+    linksEl.innerHTML = `<h4><i class="fas fa-link-slash"></i> Suspicious Links</h4>` +
+      data.suspicious_links.map(l => `<div class="link-item"><i class="fas fa-triangle-exclamation"></i> <code>${l.substring(0,60)}…</code></div>`).join('');
+  } else { linksEl.innerHTML = ''; }
+
+  panel.scrollIntoView({ behavior: 'smooth' });
+}
+
+// Donut chart
+if (CHART_DATA.scam + CHART_DATA.safe + CHART_DATA.suspicious > 0) {
+  const ctx = document.getElementById('donutChart');
+  if (ctx) {
+    new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Scam', 'Safe', 'Suspicious'],
+        datasets: [{ data: [CHART_DATA.scam, CHART_DATA.safe, CHART_DATA.suspicious],
+          backgroundColor: ['#ef4444','#22c55e','#f59e0b'],
+          borderWidth: 0, hoverOffset: 6 }]
+      },
+      options: { cutout: '72%', plugins: { legend: { position: 'bottom', labels: { padding: 16, font: { family: 'Inter' } } } } }
+    });
+  }
+}
+</script>
+{% endblock %}
