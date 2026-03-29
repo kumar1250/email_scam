@@ -141,4 +141,41 @@ email_scam_detector/
 - `@login_required` + `@user_passes_test(admin_required)` decorators
 - Input validation on all forms
 - File upload restricted to `.txt` and `.eml`
-"# email_scam" 
+
+---
+
+## ☁️ Render.com Deployment
+1. Create a new web service on Render:
+   - Connect your GitHub repo
+   - Environment: Python
+   - Build command: `pip install -r requirements.txt`
+   - Start command: `gunicorn email_scam_detector.wsgi:application --bind 0.0.0.0:$PORT`
+   - Add `render.yaml` and `Procfile` to repository (already present)
+
+2. Set Render environment variables:
+   - `DJANGO_SECRET_KEY` (a strong random secret)
+   - `DJANGO_DEBUG=false`
+   - `DJANGO_ALLOWED_HOSTS=*` (or your Render domain)
+   - `DATABASE_URL` (optional: PostgreSQL add-on in Render)
+
+3. (Optional but recommended) Add PostgreSQL service in Render, copy its DATABASE_URL to the web service.
+
+4. Ensure migrations run (Render automatically does this if you add a release command in settings):
+   - You can add in Render "Migration command": `python manage.py migrate`
+
+5. Enable static files in production:
+   - `STATIC_ROOT = BASE_DIR / 'staticfiles'` (already set)
+   - `STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'`
+   - `MIDDLEWARE` includes `whitenoise.middleware.WhiteNoiseMiddleware`
+
+6. Deploy and verify in browser.
+
+---
+
+### Quick local test after install
+```bash
+pip install -r requirements.txt
+python manage.py migrate
+python manage.py runserver
+```
+" 
